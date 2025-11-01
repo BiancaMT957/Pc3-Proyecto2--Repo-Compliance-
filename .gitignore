@@ -1,0 +1,30 @@
+
+---
+
+##  ** .gitignore**
+```gitignore
+# Python
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+
+# Entorno virtual
+venv/
+env/
+
+# Cobertura / Salidas
+
+htmlcov/
+out/
+coverage.xml
+
+# Archivos temporales / IDE
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Credenciales o variables de entorno
+.env
