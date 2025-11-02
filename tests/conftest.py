@@ -1,5 +1,7 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 
 @pytest.fixture
 def repo_factory(tmp_path):
@@ -16,10 +18,11 @@ def repo_factory(tmp_path):
         config_secret=False,
       )
     """
+
     def _make(
         gitignore: bool = True,
         env_in_gitignore: bool = True,
-        license_text: str | None = None,   # None = no LICENSE, "" = vacío
+        license_text: str | None = None,  # None = no LICENSE, "" = vacío
         make_targets: tuple[str, ...] | None = ("lint", "test", "coverage"),
         dot_env: bool = False,
         dot_env_example: bool = False,
@@ -54,10 +57,17 @@ def repo_factory(tmp_path):
             (repo / ".env.example").write_text("API_KEY=\n")
 
         # settings.py/config.py con o sin secretos
+        # en tests/conftest.py, donde creas archivos falsos
         if settings_secret:
-            (repo / "settings.py").write_text('SECRET_KEY = "supersecret-super-largo"\n')
+            (repo / "settings.py").write_text(
+                'SECRET_KEY = "not-a-real-secret"  # pragma: allowlist secret\n'
+            )
+
         if config_secret:
-            (repo / "config.py").write_text('TOKEN="tok_123456789_abcd"\n')
+            (repo / "config.py").write_text(
+                'TOKEN = "tok_dummy_for_test"  # pragma: allowlist secret\n'
+            )
 
         return repo
+
     return _make

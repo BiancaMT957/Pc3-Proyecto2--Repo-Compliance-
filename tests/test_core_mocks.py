@@ -1,8 +1,10 @@
 from auditor import core
 
+
 def test_run_audit_maneja_excepcion(monkeypatch, repo_factory):
     # Espía: inyectamos una "regla" que explota para cubrir rama de excepción
     calls = {"count": 0}
+
     def boom(_repo):
         calls["count"] += 1
         raise RuntimeError("boom")
@@ -32,7 +34,8 @@ def test_exists_insensitive_llamado(monkeypatch, tmp_path):
 
     monkeypatch.setattr(core, "_exists_insensitive", spy)
 
-    repo = tmp_path / "r"; repo.mkdir()
+    repo = tmp_path / "r"
+    repo.mkdir()
     (repo / "LICENSE").write_text("MIT")
     _ = core.check_license_file(repo)
 

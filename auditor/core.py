@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
-import os, re, json
 from typing import Dict, Iterable, List
 
 
 # Helpers
 def _read_text(p: Path) -> str:
     return p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
+
 
 def _exists_insensitive(root: Path, names: Iterable[str]) -> Path | None:
     lower = {p.name.lower(): p for p in root.glob("*")}
@@ -17,7 +18,10 @@ def _exists_insensitive(root: Path, names: Iterable[str]) -> Path | None:
             return p
     return None
 
-def _rule_result(rule: str, status: str, severity: str, details: Dict | str | None = None) -> Dict:
+
+def _rule_result(
+    rule: str, status: str, severity: str, details: Dict | str | None = None
+) -> Dict:
     # status: "PASS" | "FAIL"
     # severity: "LOW" | "MEDIUM" | "HIGH"
     payload: Dict = {"rule": rule, "status": status, "severity": severity}
@@ -32,10 +36,7 @@ def check_env_in_gitignore(repo: Path) -> Dict:
     gi = repo / ".gitignore"
     if not gi.exists():
         return _rule_result(
-            "ENV_IN_GITIGNORE",
-            "FAIL",
-            "HIGH",
-            {"reason": ".gitignore no existe"}
+            "ENV_IN_GITIGNORE", "FAIL", "HIGH", {"reason": ".gitignore no existe"}
         )
     content = _read_text(gi)
     if ".env" not in content:
@@ -43,7 +44,7 @@ def check_env_in_gitignore(repo: Path) -> Dict:
             "ENV_IN_GITIGNORE",
             "FAIL",
             "HIGH",
-            {"path": str(gi), "reason": "Falta la entrada .env en .gitignore"}
+            {"path": str(gi), "reason": "Falta la entrada .env en .gitignore"},
         )
     return _rule_result("ENV_IN_GITIGNORE", "PASS", "LOW", {"path": str(gi)})
 
@@ -53,21 +54,37 @@ def check_license_file(repo: Path) -> Dict:
     """Verifica LICENSE/License(.md) y que no esté vacío."""
     candidate = _exists_insensitive(repo, ["LICENSE", "LICENSE.md"])
     if not candidate:
-        return _rule_result("LICENSE_FILE", "FAIL", "MEDIUM", {"reason": "No se encontró LICENSE/License.md"})
+        return _rule_result(
+            "LICENSE_FILE",
+            "FAIL",
+            "MEDIUM",
+            {"reason": "No se encontró LICENSE/License.md"},
+        )
     text = _read_text(candidate).strip()
     if not text:
-        return _rule_result("LICENSE_FILE", "FAIL", "MEDIUM", {"path": str(candidate), "reason": "Archivo LICENSE vacío"})
+        return _rule_result(
+            "LICENSE_FILE",
+            "FAIL",
+            "MEDIUM",
+            {"path": str(candidate), "reason": "Archivo LICENSE vacío"},
+        )
     return _rule_result("LICENSE_FILE", "PASS", "LOW", {"path": str(candidate)})
 
 
 # 3) Makefile con targets obligatorios (lint, test, coverage). Devolver faltantes
 REQUIRED_MAKE_TARGETS = ("lint", "test", "coverage")
 
+
 def check_makefile_targets(repo: Path) -> Dict:
     """Valida Makefile y presencia de targets requeridos; lista los faltantes en details."""
     mk = _exists_insensitive(repo, ["Makefile"])
     if not mk:
-        return _rule_result("MAKEFILE_TARGETS", "FAIL", "HIGH", {"reason": "No existe Makefile en la raíz"})
+        return _rule_result(
+            "MAKEFILE_TARGETS",
+            "FAIL",
+            "HIGH",
+            {"reason": "No existe Makefile en la raíz"},
+        )
     content = _read_text(mk)
 
     missing: List[str] = []
@@ -81,7 +98,11 @@ def check_makefile_targets(repo: Path) -> Dict:
             "MAKEFILE_TARGETS",
             "FAIL",
             "MEDIUM",
-            {"path": str(mk), "missing": missing, "required": list(REQUIRED_MAKE_TARGETS)}
+            {
+                "path": str(mk),
+                "missing": missing,
+                "required": list(REQUIRED_MAKE_TARGETS),
+            },
         )
     return _rule_result("MAKEFILE_TARGETS", "PASS", "LOW", {"path": str(mk)})
 
@@ -100,6 +121,7 @@ SECRET_PATTERNS = (
     r"(?i)TOKEN\s*[:=]\s*['\"][A-Za-z0-9\._\-]{12,}['\"]",
 )
 
+
 def check_config_via_env(repo: Path) -> Dict:
     """.env no debe versionarse; detectar credenciales en archivos de config comunes."""
     # 4.a .env presente => FAIL HIGH
@@ -108,7 +130,10 @@ def check_config_via_env(repo: Path) -> Dict:
             "CONFIG_VIA_ENV",
             "FAIL",
             "HIGH",
-            {"path": str(repo / ".env"), "reason": "Se detectó .env versionado en el repositorio"}
+            {
+                "path": str(repo / ".env"),
+                "reason": "Se detectó .env versionado en el repositorio",
+            },
         )
 
     # 4.b Heurística de secretos en archivos comunes
@@ -125,7 +150,10 @@ def check_config_via_env(repo: Path) -> Dict:
             "CONFIG_VIA_ENV",
             "FAIL",
             "HIGH",
-            {"reason": "Posibles credenciales en archivos de configuración", "matches": leaks}
+            {
+                "reason": "Posibles credenciales en archivos de configuración",
+                "matches": leaks,
+            },
         )
 
     # OK (ideal si existe .env.example documentando variables)
@@ -133,7 +161,9 @@ def check_config_via_env(repo: Path) -> Dict:
     if (repo / ".env.example").exists():
         ok_detail["hint"] = ".env.example presente (documenta variables sin valores)"
 
-    return _rule_result("CONFIG_VIA_ENV", "PASS", "LOW" if ok_detail else "MEDIUM", ok_detail or None)
+    return _rule_result(
+        "CONFIG_VIA_ENV", "PASS", "LOW" if ok_detail else "MEDIUM", ok_detail or None
+    )
 
 
 # 5) run_audit: ejecutar todas y agrupar findings
@@ -151,12 +181,14 @@ def run_audit(repo: Path) -> Dict:
         try:
             findings.append(rule(repo))
         except Exception as exc:  # protección de motor
-            findings.append(_rule_result(
-                rule.__name__,
-                "FAIL",
-                "HIGH",
-                {"reason": f"{type(exc).__name__}: {exc}"}
-            ))
+            findings.append(
+                _rule_result(
+                    rule.__name__,
+                    "FAIL",
+                    "HIGH",
+                    {"reason": f"{type(exc).__name__}: {exc}"},
+                )
+            )
 
     # Resumen útil (opcional, pero práctico para CI)
     total = len(findings)
