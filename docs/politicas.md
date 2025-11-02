@@ -67,7 +67,8 @@ python -m auditor.main
 
 ---
 
-### 7. Métricas del Sprint
+
+### 7. Las Métricas del Sprint
 
 | **Métrica** | **Resultado** |
 |--------------|----------------|

@@ -465,4 +465,5 @@ El Sprint 1 culminó con éxito:
 - Se alcanzó **98 % de cobertura**.
 - Todas las reglas base están integradas y testeadas.
 - Los hooks y convenciones de commits están activos.
-- El proyecto está listo para iniciar el **Sprint 2**, enfocado en integración CI/CD y reporte automático de findings en PRs.
+- Este proyecto está listo para iniciar el **Sprint 2**, enfocado en integración CI/CD y reporte automático de findings en PRs.
+
