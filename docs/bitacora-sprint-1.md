@@ -128,3 +128,205 @@ Se instaló pre-commit con los siguientes hooks en fase no bloqueante:
 
 * La configuración se documentó en docs/hooks.md , indicando cómo instalar y activar los hooks localmente.
 
+# Issue 1.2: Implementar reglas base de auditoría.
+## Objetivo
+Desarrollar e integrar las reglas mínimas del motor de auditoría que permitan analizar repositorios y detectar incumplimientos básicos de seguridad, licenciamiento y buenas prácticas DevSecOps.
+
+## Metodologia
+
+### 1. Diseño de funciones en `auditor/core.py`.
+Se crean funciones independientes para cada regla:
+- `check_env_in_gitignore()`: verifica exitencia de gitignore y .env
+- `check_license_file()`: verifica la existencia de licencia
+- `check_makefile_targets()`: verifica exitencia de makefile con targets basicos
+- `check_config_credentials()`: verifica secretos detectados
+
+### 2. Estandarizado de resultados de cada regla.
+- Se asegura que todos devuelvan un diccionario con claves:
+```bash
+{"rule": ..., "status": ..., "severity": ..., "details": ...}
+```
+- Se usa niveles de severidad (LOW, MEDIUM, HIGH) y estados (PASS, FAIL).
+
+### 3. Implementacion de la funcion `run_audit()`.
+- Ejecuta todas las reglas de la secuencia.
+- Agrega sus resultados a una lista findings global.
+- Prepara el entorno compatible con futuras exportaciones (CSV o JSON).
+
+### 4. Valida deteccion de fallos comunes.
+- `.env` no se encuentra en `.gitignore`: `FAIL + HIGH`
+- Licencia vacia o ausente: `FAIL`
+- Makefile sin targets `lint`, `test`, `coverage`: `FAIL` con lista de faltantes
+- Variables sensibles o credenciales en archivos de configuracion (`config.yaml`, `.env`, etc): `FAIL + HIGH`
+
+### 5. Probar las reglas individualmente y en conjunto.
+- Genera repositorios de prueba (válidos y erróneos) en tests/data/repos/.
+- Ejecuta pytest para validar que cada regla se comporte según lo esperado.
+- Verifica que `run_audit()` combine correctamente los findings.
+
+### 6. Cumplir con el umbral de calidad definido.
+- Cobertura de pruebas ≥ 85 %.
+- Estructura reproducible (`src/`, `tests/`, `out/`).
+- Resultados reproducibles con `make test_all`.
+
+## Evidencias
+Colocamos una de las reglas diseñadas en `auditor/core.py`:
+```bash
+def check_env_in_gitignore(repo: Path) -> Dict:
+    """Verifica que '.env' aparezca en el .gitignore."""
+    gi = repo / ".gitignore"
+    if not gi.exists():
+        return _rule_result(
+            "ENV_IN_GITIGNORE",
+            "FAIL",
+            "HIGH",
+            {"reason": ".gitignore no existe"}
+        )
+    content = _read_text(gi)
+    if ".env" not in content:
+        return _rule_result(
+            "ENV_IN_GITIGNORE",
+            "FAIL",
+            "HIGH",
+            {"path": str(gi), "reason": "Falta la entrada .env en .gitignore"}
+        )
+    return _rule_result("ENV_IN_GITIGNORE", "PASS", "LOW", {"path": str(gi)})
+```
+El metodo nos permite hallar `.gitignore` dentro del repo, tambien nos premite verificar la existencia de `.env` dentro de `.gitignore`. 
+
+Tambien tenemos la funcion `run_adit()` que ejecuta todas las reglas:
+```bash
+def run_audit(repo: Path) -> Dict:
+    """Ejecuta todas las reglas y devuelve findings + resumen."""
+    rules = [
+        check_env_in_gitignore,
+        check_license_file,
+        check_makefile_targets,
+        check_config_via_env,
+    ]
+    findings: List[Dict] = []
+
+    for rule in rules:
+        try:
+            findings.append(rule(repo))
+        except Exception as exc:  # protección de motor
+            findings.append(_rule_result(
+                rule.__name__,
+                "FAIL",
+                "HIGH",
+                {"reason": f"{type(exc).__name__}: {exc}"}
+            ))
+```
+
+# Issue 1.3: Pruebas unitarias con parametrización
+
+##  Objetivos
+Asegurar la **calidad del motor de auditoría (`auditor/core.py`)** mediante la creación de un conjunto de **tests unitarios parametrizados** que cubran escenarios buenos, malos y límite.  
+El propósito del issue es alcanzar una **cobertura mínima del 85 %** (superada con 90 % final), garantizando que todas las reglas base (`check_*`) y el motor `run_audit()` funcionen de forma confiable.
+
+## Metodología
+
+### 1. Estructura y organización de pruebas
+- Se centralizaron las pruebas en la carpeta `tests/` siguiendo la convención de `pytest`, con los siguientes archivos:
+```bash
+tests/
+├─ conftest.py
+├─ test_core_param.py
+├─ test_core_mocks.py
+└─ test_run_audit_integration.py
+```
+Se implementó la **fixture `repo_factory`** (en `conftest.py`) para generar repositorios temporales usando `tmp_path`.  
+Esta función permite crear combinaciones controladas de:
+- `.gitignore` con o sin `.env`.
+- `LICENSE` vacío, inexistente o válido.
+- `Makefile` con targets completos o faltantes.
+- Archivos `.env`, `.env.example`, `settings.py`, `config.py` con posibles secretos.
+- Esta fixture permitió **reutilizar repositorios simulados** en todos los tests, cumpliendo con el requisito de *fixtures reutilizables y consistentes*.
+
+### 2. Pruebas parametrizadas
+- Se desarrollaron **tests con `@pytest.mark.parametrize`** (en `test_core_param.py`) para cubrir todas las variantes de entrada:
+- `.env` ausente o no listado en `.gitignore`: debe fallar con severidad HIGH.  
+- `LICENSE` inexistente o vacío: FAIL.  
+- `Makefile` incompleto (faltan targets `lint`, `test`, `coverage`): FAIL/MEDIUM.  
+- Detección de secretos en `.env`, `settings.py` o `config.py` → FAIL/HIGH.  
+- Repositorios correctos con `.env.example`: PASS/LOW.
+- Esta parametrización permitió **maximizar la cobertura** y **evitar duplicación de código**.
+
+### 3. Mocks, patch y validación de llamadas
+En `test_core_mocks.py`, se empleó **monkeypatch** y wrappers espías para:
+- Simular una excepción en una regla (`RuntimeError("boom")`) y verificar que `run_audit()` la capture sin interrumpir la ejecución.
+- Interceptar `_exists_insensitive()` y validar sus argumentos (`call_args` equivalentes a los nombres esperados de archivos LICENSE).
+- Con esto se cubrieron las ramas internas del motor y se demostró que la auditoría es **resiliente ante errores internos**.
+
+### 4. Pruebas de integración
+En `test_run_audit_integration.py` se validó el comportamiento **de punta a punta** del auditor:
+- Repositorio correcto: `failed == 0`, JSON serializable.
+- Repositorio con múltiples fallas: `failed >= 3`, hallazgos agregados correctamente.
+- Este test asegura la **integridad del flujo** de generación de findings y del `summary`.
+
+
+## Evidencias
+### Test de 
+### Test de integración con múltiples fallas
+
+El siguiente test demuestra la ejecución completa del motor `run_audit()` ante un repositorio con múltiples incumplimientos:
+
+```python
+def test_run_audit_fail_detecta_faltantes(repo_factory):
+    repo = repo_factory(
+        gitignore=True, env_in_gitignore=False,  
+        license_text="",                      
+        make_targets=("lint",),              
+        dot_env=True,                   
+    )
+    rep = core.run_audit(repo)
+    assert rep["summary"]["failed"] >= 3
+    assert any(f["rule"] == "MAKEFILE_TARGETS" and f["status"] == "FAIL" for f in rep["findings"])
+```
+
+### Cobertura
+- Ejecución con `make test`:
+```bash
+(venv) luis@LAPTOP-LC:/mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-$ make test
+ Ejecutando pruebas...
+mkdir -p out
+pytest --cov=auditor --cov-report=xml:out/coverage.xml --cov-report=term-missing -v
+=============================================================== test session starts ===============================================================
+platform linux -- Python 3.12.3, pytest-8.4.2, pluggy-1.6.0 -- /mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-/venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-
+configfile: pytest.ini
+testpaths: tests
+plugins: cov-7.0.0
+collected 20 items                                                                                                                                
+
+tests/test_core_mocks.py::test_run_audit_maneja_excepcion PASSED                                                                            [  5%]
+tests/test_core_mocks.py::test_exists_insensitive_llamado PASSED                                                                            [ 10%] 
+tests/test_core_param.py::test_check_env_in_gitignore[False-False-FAIL-HIGH] PASSED                                                         [ 15%] 
+tests/test_core_param.py::test_check_env_in_gitignore[True-False-FAIL-HIGH] PASSED                                                          [ 20%]
+tests/test_core_param.py::test_check_env_in_gitignore[True-True-PASS-LOW] PASSED                                                            [ 25%]
+tests/test_core_param.py::test_check_license_file[None-FAIL] PASSED                                                                         [ 30%] 
+tests/test_core_param.py::test_check_license_file[-FAIL] PASSED                                                                             [ 35%]
+tests/test_core_param.py::test_check_license_file[MIT-PASS] PASSED                                                                          [ 40%]
+tests/test_core_param.py::test_check_makefile_targets[None-FAIL-missing_subset0] PASSED                                                     [ 45%] 
+tests/test_core_param.py::test_check_makefile_targets[targets1-FAIL-missing_subset1] PASSED                                                 [ 50%] 
+tests/test_core_param.py::test_check_makefile_targets[targets2-FAIL-missing_subset2] PASSED                                                 [ 55%] 
+tests/test_core_param.py::test_check_makefile_targets[targets3-PASS-missing_subset3] PASSED                                                 [ 60%]
+tests/test_core_param.py::test_check_config_via_env[True-False-False-FAIL-HIGH] PASSED                                                      [ 65%] 
+tests/test_run_audit_integration.py::test_run_audit_fail_detecta_faltantes PASSED                                                           [ 95%] 
+tests/test_sample.py::test_saludo_basico PASSED                                                                                             [100%] 
+
+================================================================= tests coverage ==================================================================
+_________________________________________________ coverage: platform linux, python 3.12.3-final-0 _________________________________________________
+
+Name                  Stmts   Miss  Cover   Missing
+---------------------------------------------------
+auditor/__init__.py       0      0   100%
+auditor/core.py          84      2    98%   184-185
+auditor/main.py           2      0   100%
+---------------------------------------------------
+TOTAL                    86      2    98%
+Coverage XML written to file out/coverage.xml
+=============================================================== 20 passed in 1.58s ================================================================
+(venv) luis@LAPTOP-LC:/mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-$
+```
