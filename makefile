@@ -3,7 +3,7 @@
 install_deps:
 	pip install -r requirements.txt
 	sudo apt update -y && sudo apt install -y nodejs npm
-	npm install --save-dev @commitlint/{config-conventional,cli}
+	npm install --save-dev @commitlint/config-conventional @commitlint/cli
 
 setup_hooks:
 	pre-commit clean
