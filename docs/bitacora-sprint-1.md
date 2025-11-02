@@ -266,7 +266,6 @@ En `test_run_audit_integration.py` se validó el comportamiento **de punta a pun
 
 
 ## Evidencias
-### Test de 
 ### Test de integración con múltiples fallas
 
 El siguiente test demuestra la ejecución completa del motor `run_audit()` ante un repositorio con múltiples incumplimientos:
@@ -364,5 +363,79 @@ Este bloque usa un repositorio wrapper oficial que adapta `commitlint` al ecosis
 | `stages: ` | Define en que estapa del ciclo de Git se ejecuta: `commit-msg` (justo despues de escribir el mensaje). |
 | `args: ` | Son los argumentos pasados al comando `commitlint`. Indica donde esta el archivo de configuracion: `.commitlintrc.json` |
 
+> **Nota:** Con esto logramos configurar el diseño de los commit, ya que solo se aceptaran los convencionales.
 
+Se adjunta ejemplo de uso:
+```bash
+(venv) luis@LAPTOP-LC:/mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-$ git commit -m "añadi cambios"
+[ERROR] Your pre-commit configuration is unstaged.
+`git add .pre-commit-config.yaml` to fix this.
+```
 
+### Modificacion del `Makefile`.
+Como proceso para la automatizacion del proyecto, añadimos los siguientes targets para preparar el entorno con las dependencias y hooks necesarios.
+
+1. Añadimos el target `install_deps`, que nos permite instalar dependencias del sistema y del proyecto, instala `Python` y `Node.js`. 
+```Makefile
+install_deps:
+	pip install -r requirements.txt
+	sudo apt update -y && sudo apt install -y nodejs npm
+	npm install --save-dev @commitlint/{config-conventional,cli}
+
+```
+**Por qué existe:**
+- Asegura que el entorno tenga lo necesario: pytest, flake8, black, pre-commit, commitlint, etc.
+- Evita que los desarrolladores olviden instalar algo manualmente.
+- Permite repetir el proceso sin miedo (idempotente).
+2. Añadimos el target `setup_hooks`, que configura los hooks de Git, usa las herramientas que se instalaron antes para crear los hooks dentro del repositorio.
+
+```Makefile
+setup_hooks:
+	pre-commit clean
+	pre-commit install --hook-type pre-commit --hook-type commit-msg
+	pre-commit autoupdate
+	pre-commit run --all-files || true
+```
+**Por qué existe:**
+- Limpia posibles hooks viejos.
+- Crea los archivos reales en `.git/hooks/`:
+    - `pre-commit`: ejecuta black, isort, flake8, detect-secrets.
+    - `commit-msg`: ejecuta commitlint.
+- Actualiza versiones de hooks (`autoupdate`).
+- Ejecuta una pasada de prueba (`run --all-files`).
+
+3. Finalmente agrupamos ambas dentro del target `setup`, ya que representan todo el flujo de inicializacion del proyecto.
+
+### ¿Por qué usamos Hooks?
+Un Hook de Git (o "gancho") es simplemente un script que Git ejecuta automáticamente en ciertos eventos clave durante su operación normal.
+
+Funcionan como mecanismos de automatización y validación que te permiten personalizar el comportamiento interno de Git. Puedes usarlos para asegurar que el código cumpla con ciertos estándares o para automatizar tareas repetitivas.
+
+## Ejecucion con conventional commit
+La configuracion (`.pre-commit-config.yaml`) contiene múltiples etapas:
+- Primero corre el hook `pre-commit`, ejecutando black, isort, flake8, detect-secrets, etc.
+- Luego corre el hook `commit-msg`, ejecutando nuevamente el pipeline (por diseño, pre-commit lanza los hooks activos en ambas etapas), más `commitlint`.
+
+Daremos el ejemplo al hacer commit sobre el archivo `.pre-commit-config.yaml` que se modifico, dando el siguiente resultado:
+```bash
+(venv) luis@LAPTOP-LC:/mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-$ git commit -m "fix: configura el uso de conventional commits"
+[WARNING] Unstaged files detected.
+[INFO] Stashing unstaged files to /home/luis/.cache/pre-commit/patch1762110720-8631.
+black................................................(no files to check)Skipped
+isort................................................(no files to check)Skipped
+flake8...............................................(no files to check)Skipped
+Detect hardcoded secrets.................................................Passed
+Detect secrets...........................................................Passed
+[INFO] Restored changes from /home/luis/.cache/pre-commit/patch1762110720-8631.
+[WARNING] Unstaged files detected.
+[INFO] Stashing unstaged files to /home/luis/.cache/pre-commit/patch1762110724-8669.
+black................................................(no files to check)Skipped
+flake8...............................................(no files to check)Skipped
+Detect hardcoded secrets.................................................Passed
+commitlint...............................................................Passed
+Detect secrets...........................................................Passed
+[INFO] Restored changes from /home/luis/.cache/pre-commit/patch1762110724-8669.
+[feature/configuracion-inicial/Luis 091de24] fix: configura el uso de conventional commits
+ 2 files changed, 39 insertions(+), 1 deletion(-)
+```
+Finalmente observamos la correcta ejecucion del `commitlint` ya que ahora nos pide un conventional commit para poder hacer los commits.
