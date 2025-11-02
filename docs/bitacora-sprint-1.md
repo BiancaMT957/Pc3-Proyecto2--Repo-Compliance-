@@ -330,3 +330,39 @@ Coverage XML written to file out/coverage.xml
 =============================================================== 20 passed in 1.58s ================================================================
 (venv) luis@LAPTOP-LC:/mnt/c/Users/Luis/Documents/Pc3-Proyecto2--Repo-Compliance-$
 ```
+
+## Observaciones
+### Modificacion del `.pre-commit-config.yaml` 
+1. Se añade la siguiente linea al inicio:
+```yaml
+default_install_hook_types: [pre-commit, commit-msg]
+```
+Esta linea le dice a `pre-commit` que instale ambos hooks (pre-commit y commit-msg), cuando se ejecuta `pre-commit install`.
+
+2. Se modifica el siguientes bloque:
+```yaml
+- repo: https://github.com/conventional-changelog/commitlint
+  rev: v17.8.0
+  hooks:
+    - id: commitlint
+```
+La validacion de commits no funcionaba correctamente, ya que no es compatible con pre-commit. Luego definimos el siguiente bloque:
+```yaml
+  - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+    rev: v9.16.0
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+        args: ["--config=.commitlintrc.json"]
+``` 
+Este bloque usa un repositorio wrapper oficial que adapta `commitlint` al ecosistema de pre-commit.
+#### Configuracion del hook:
+
+| Clave | Descripcion |
+|--------------|--------|
+| `id: ` | Define el **hook** se ejecuta desde ese repo, en nuestro caso `commitlint`. |
+| `stages: ` | Define en que estapa del ciclo de Git se ejecuta: `commit-msg` (justo despues de escribir el mensaje). |
+| `args: ` | Son los argumentos pasados al comando `commitlint`. Indica donde esta el archivo de configuracion: `.commitlintrc.json` |
+
+
+
