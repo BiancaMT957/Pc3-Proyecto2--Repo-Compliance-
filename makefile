@@ -1,4 +1,18 @@
-.PHONY: lint test coverage run clean
+.PHONY: lint test coverage run clean setup install_deps setup_hooks
+
+install_deps:
+	pip install -r requirements.txt
+	sudo apt update -y && sudo apt install -y nodejs npm
+	npm install --save-dev @commitlint/{config-conventional,cli}
+
+setup_hooks:
+	pre-commit clean
+	pre-commit install --hook-type pre-commit --hook-type commit-msg
+	pre-commit autoupdate
+	pre-commit run --all-files || true
+
+setup: install_deps setup_hooks
+	@echo "Proyecto inicializado con hooks activos"
 
 lint:
 	@echo " Ejecutando linters..."
