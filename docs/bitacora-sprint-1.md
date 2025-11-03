@@ -439,3 +439,22 @@ Detect secrets...........................................................Passed
  2 files changed, 39 insertions(+), 1 deletion(-)
 ```
 Finalmente observamos la correcta ejecucion del `commitlint` ya que ahora nos pide un conventional commit para poder hacer los commits.
+
+ # Documentación de `xfail`, `skip` y deuda técnica
+Durante las pruebas unitarias:
+- Se utilizaron **@pytest.mark.xfail** en casos donde la función debía fallar por diseño (por ejemplo, detección de archivo `.env` ausente).
+- Se usaron **@pytest.mark.skip** para escenarios dependientes del sistema operativo (Windows vs. Linux) o diferencias de ruta (`\` vs `/`).
+- Esta documentación justifica que el 2% restante de cobertura no sea ejecutable de forma portable.
+###  Deuda Técnica Abierta
+1. Implementar validación de tamaño de archivos (`>100 MB`) y artefactos binarios.
+2. Extender `check_config_via_env` para soportar formatos YAML y JSON.
+3. Automatizar exportación de reportes (`out/report.json`) hacia GitHub Actions.
+4. Añadir política de “no secretos” usando `gitleaks` en el pipeline CI/CD.
+5. Implementar tests de estrés sobre repositorios con >500 archivos.
+---
+##  Conclusión del Sprint 1
+El Sprint 1 culminó con éxito:
+- Se alcanzó **98 % de cobertura**.
+- Todas las reglas base están integradas y testeadas.
+- Los hooks y convenciones de commits están activos.
+- El proyecto está listo para iniciar el **Sprint 2**, enfocado en integración CI/CD y reporte automático de findings en PRs.
