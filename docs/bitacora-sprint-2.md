@@ -115,6 +115,9 @@ Asegurar que ningún pull request se fusione con incumplimientos críticos.
  Reporte generado en out/report.json
  Auditoría sin findings HIGH.
 
+(venv) bianca007@MSI:/mnt/c/Users/Bianca/Documents/Pc3-Proyecto2--Repo-Compliance-$ echo $?
+0
+
 
 #### 5 Flujo de CI/CD – Auditor de Cumplimiento
 
