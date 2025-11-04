@@ -2,6 +2,7 @@ from auditor import core
 
 
 def test_run_audit_maneja_excepcion(monkeypatch, repo_factory):
+
     # Espía: inyectamos una "regla" que explota para cubrir rama de excepción
     calls = {"count": 0}
 
@@ -44,3 +45,6 @@ def test_exists_insensitive_llamado(monkeypatch, tmp_path):
     root, names = seen["args"][0]
     assert root == repo
     assert set(n.lower() for n in names) == {"license", "license.md"}
+
+
+
