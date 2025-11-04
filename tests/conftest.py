@@ -8,7 +8,7 @@ def repo_factory(tmp_path):
     """
     Crea un repositorio temporal con archivos opcionales.
     Uso:
-      repo = repo_factory(
+    repo = repo_factory(
         gitignore=True, env_in_gitignore=True,
         license_text="MIT",
         make_targets=("lint","test","coverage"),
@@ -16,7 +16,7 @@ def repo_factory(tmp_path):
         dot_env_example=True,
         settings_secret=False,
         config_secret=False,
-      )
+    )
     """
 
     def _make(
