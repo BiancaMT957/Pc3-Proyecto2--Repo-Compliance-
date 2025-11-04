@@ -206,3 +206,31 @@ def run_audit(repo: Path) -> Dict:
         },
         "findings": findings,
     }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    repo = Path(".")
+    out_dir = Path("out")
+    out_dir.mkdir(exist_ok=True)
+
+    # Ejecutar auditor
+    result = run_audit(repo)
+
+    # Guardar reporte
+    report_path = out_dir / "report.json"
+    with report_path.open("w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2, ensure_ascii=False)
+
+    print(f" Reporte generado en {report_path}")
+
+    # Si hay findings HIGH → exit 1
+    high_findings = [f for f in result["findings"] if f.get("severity") == "HIGH"]
+    if high_findings:
+        print(" Se detectaron findings HIGH. Bloqueando pipeline.")
+        sys.exit(1)
+
+    print(" Auditoría sin findings HIGH.")
+    sys.exit(0)
