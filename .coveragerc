@@ -1,0 +1,13 @@
+[run]
+# No incluyas el entorno virtual en el reporte
+omit =
+    */venv/*
+
+[report]
+# Ignora las líneas que faltan y que son correctas
+exclude_lines =
+    # No testear código defensivo que no se alcanza (Línea 12)
+    if not p.exists():
+
+    # No testear el bloque de ejecución principal (Líneas 253-282)
+    if __name__ == .__main__.:
