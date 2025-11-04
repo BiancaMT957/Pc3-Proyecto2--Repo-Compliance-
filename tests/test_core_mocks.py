@@ -45,6 +45,3 @@ def test_exists_insensitive_llamado(monkeypatch, tmp_path):
     root, names = seen["args"][0]
     assert root == repo
     assert set(n.lower() for n in names) == {"license", "license.md"}
-
-
-
