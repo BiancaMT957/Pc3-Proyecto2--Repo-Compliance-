@@ -1,4 +1,8 @@
-.PHONY: lint test coverage run clean setup install_deps setup_hooks
+.PHONY: lint test coverage run clean setup install_deps setup_hooks audit report
+
+PKG ?= auditor
+OUT ?= out
+COV_MIN ?= 85
 
 install_deps:
 	pip install -r requirements.txt
@@ -16,24 +20,29 @@ setup: install_deps setup_hooks
 
 lint:
 	@echo " Ejecutando linters..."
-	black auditor tests
-	isort auditor tests
-	flake8 auditor tests
+	black $(PKG) tests
+	isort $(PKG) tests
+	flake8 $(PKG) tests
 
 test:
 	@echo " Ejecutando pruebas..."
-	mkdir -p out
-	pytest --cov=auditor --cov-report=xml:out/coverage.xml --cov-report=term-missing -v
+	mkdir -p $(OUT)
+	pytest --cov=$(PKG) --cov-report=xml:$(OUT)/coverage.xml --cov-report=term-missing --cov-fail-under=$(COV_MIN) -v
 
-coverage:
-	@echo " Mostrando reporte de cobertura..."
-	mkdir -p out
-	pytest --cov=auditor --cov-report=term-missing -v
+report:
+	@echo "Generando reportes JSON/MD..."
+	python -m $(PKG).report
+
+audit:
+	@echo "Ejecutando auditor con gate de severidad (fail on HIGH)"
+	python -m $(PKG).report --fail-on-high
 
 run:
-	@echo " Ejecutando auditor..."
-	python -m auditor
+	@echo " Ejecutando auditor (no falla si hay HIGH)..."
+	python -m $(PKG).report
+
+
 
 clean:
 	@echo " Limpiando archivos temporales..."
-	rm -rf __pycache__ */__pycache__ out/ .pytest_cache .coverage coverage.xml
+	rm -rf __pycache__ */__pycache__ $(OUT)/ .pytest_cache .coverage coverage.xml
