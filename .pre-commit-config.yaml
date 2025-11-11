@@ -1,14 +1,16 @@
+default_install_hook_types: [pre-commit, commit-msg]
 repos:
-  - repo: https://github.com/psf/black
-    rev: 25.11.0
-    hooks:
-      - id: black
-        stages: [pre-commit]
-
   - repo: https://github.com/PyCQA/isort
     rev: 7.0.0
     hooks:
       - id: isort
+        args: ["--profile", "black"]
+        stages: [pre-commit]
+
+  - repo: https://github.com/psf/black
+    rev: 25.11.0
+    hooks:
+      - id: black
         stages: [pre-commit]
 
   - repo: https://github.com/PyCQA/flake8
@@ -17,6 +19,7 @@ repos:
       - id: flake8
         stages: [pre-commit]
         args: ["--max-line-length=100", "--extend-ignore=E203,W503"]
+        stages: [pre-commit]
 
   - repo: https://github.com/zricethezav/gitleaks
     rev: v8.29.0
