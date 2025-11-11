@@ -293,8 +293,41 @@ from auditor.report import generate_json_report, generate_markdown_report
             ],
             ["| HIGH | 1 |", "| LOW | 1 |", "ENV_IN_GITIGNORE", "LICENSE_FILE", "❌", "✅"],
         ),
-    ],
+    ]
 )
 ```
 - Se genera `report.md` en la carpeta temporal.
 - Se verifica que exista y contenga los fragmentos esperados, como la tabla de severidades y los iconos de estado.
+
+## Issue 2.3 - Simulacion completa del pipeline (Sprint 2)
+Nuestro objetivo en este issue es verificar el flujo end-to-end de un repositorio de prueba con fallos y correrlo localmente, para comprobar bloqueo del PR y artefactos generados.
+
+**Caracteristicas implementadas**
+1. Creacion de `tests/demo_repo_invalid/` como repositorio de ejemplo, con la siguiente descripcion:
+```bash
+tests/demo_repo_invalid/
+├─ .gitignore              # NO incluye .env  → dispara FAIL (ENV_IN_GITIGNORE)
+├─ .env                    # presente         → dispara FAIL (CONFIG_VIA_ENV)
+├─ LICENSE                 # vacío            → dispara FAIL (LICENSE_FILE)
+├─ Makefile                # incompleto       → dispara FAIL (MAKEFILE_TARGETS)
+└─ settings.py             # SECRET_KEY       → dispara FAIL (CONFIG_VIA_ENV)
+```
+Este repo generara las siguientes fallas:
+- Falta `.env` en `.gitignore`: `ENV_IN_GITIGNORE`=FAIL.
+- `LICENSE` vacio: `LICENSE_FILE`=FAIL.
+- Targets faltantes: `MAKEFILE_TARGETS`=FAIL.
+- `.env` versionado y `SECRET_KEY`: `CONFIG_VIA_ENV`=FAIL.
+
+2. Test de integracion end-to-end contra el FS.
+- Se verifica la ejecucion local del workflow (manual) y comprueba `out/report.json`. Aunque aqui lo generamos en `tmp_path/out`, esto demuestra el E2E: ejecutar reglas reales sobre archivos reales y producir reportes.
+- Creamos `test_pipeline_infalid_fs.py` para testear nuestro repositorio creado con fallas, localmente. Usaremos el siguiente comando:
+```bash
+pytest -v tests/test_pipeline_invalid_fs.py
+```
+3. Ahora verificaremos que los artefactos (`report.json`, `report.md`, `blocked_time.json`) hallan sido generados corectamente. Para eso usaremos los siguientes comando que ejecutaran el report y consultaran por cada uno de los artefactos:
+```bash
+python -m auditor.report --repo tests/demo_repo_invalid --fail-on-high || echo "Bloqueado (HIGH)"
+cat out/report.json
+cat out/report.md
+cat out/blocked_time.json
+```
