@@ -79,24 +79,15 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run auditor
+      - name: Run auditor & build reports (JSON/MD)
         run: |
-          mkdir -p out
-          python -m auditor.core || python auditor/core.py
-        continue-on-error: true
+          python -m auditor.report --fail-on-high
 
-      - name: Check HIGH findings
-        id: check_high
-        run: |
-          if grep -q '"severity": "HIGH"' out/report.json; then
-            echo " HIGH findings detected"
-            exit 1
-          else
-            echo " No HIGH findings"
-          fi
-
-      - name: Upload report artifact
+      - name: Upload audit reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: audit-report
-          path: out/report.json
+          name: audit-reports
+          path: |
+            out/report.json
+            out/report.md
