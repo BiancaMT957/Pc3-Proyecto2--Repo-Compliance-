@@ -1,5 +1,4 @@
 .PHONY: lint test coverage run clean setup install_deps setup_hooks audit report
-
 PKG ?= auditor
 OUT ?= out
 COV_MIN ?= 85
