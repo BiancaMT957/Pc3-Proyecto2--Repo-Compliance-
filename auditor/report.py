@@ -50,7 +50,6 @@ def write_markdown(findings: List[Finding], out_md: Path) -> Path:
         f"**Total findings:** {sum(counts.values())}",
         "",
     ]
-    icon = {"FAIL": "❌", "PASS": "✅"}
     for sev in ("HIGH", "MEDIUM", "LOW"):
         lines.append(f"## {sev}")
         group = [f for f in findings if f.get("severity") == sev]
@@ -62,7 +61,7 @@ def write_markdown(findings: List[Finding], out_md: Path) -> Path:
             status = f.get("status", "UNKNOWN")
             rule = f.get("rule", "UNKNOWN_RULE")
             details = f.get("details")
-            lines.append(f"- {icon.get(status, '•')} **{rule}** — *{status}*")
+            lines.append(f"- **{rule}** — *{status}*")
             if details:
                 if isinstance(details, dict):
                     pretty = ", ".join(f"{k}={v}" for k, v in details.items())
