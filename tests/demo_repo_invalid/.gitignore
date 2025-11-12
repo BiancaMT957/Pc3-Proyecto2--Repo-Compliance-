@@ -1,0 +1,3 @@
+# Intencionalmente NO listamos .env para provocar el FAIL
+__pycache__/
+*.pyc
