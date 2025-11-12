@@ -60,10 +60,8 @@ def test_write_json(tmp_path, findings, expected_counts):
             [
                 "| HIGH | 1 |",
                 "| LOW | 1 |",
-                "ENV_IN_GITIGNORE",
-                "LICENSE_FILE",
-                "❌",
-                "✅",
+                "- **ENV_IN_GITIGNORE** — *FAIL*",
+                "- **LICENSE_FILE** — *PASS*",
             ],
         ),
     ],
