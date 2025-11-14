@@ -1,0 +1,11 @@
+{
+  "generated_at": "2025-11-14T13:49:51.667005",
+  "severity_counts": {
+    "HIGH": 0,
+    "MEDIUM": 2,
+    "LOW": 2,
+    "total": 4
+  },
+  "compliance_percent": 100.0,
+  "trend": "mejora"
+}
