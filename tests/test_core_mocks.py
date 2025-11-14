@@ -2,6 +2,7 @@ from auditor import core
 
 
 def test_run_audit_maneja_excepcion(monkeypatch, repo_factory):
+
     # Espía: inyectamos una "regla" que explota para cubrir rama de excepción
     calls = {"count": 0}
 

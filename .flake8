@@ -1,0 +1,10 @@
+[flake8]
+# 1. Poner el límite de línea en 88 (para coincidir con black)
+max-line-length = 88
+
+# 2. Ignorar los errores que pusiste en tu YAML
+# (E203/W503 son conflictos comunes con black, está bien ignorarlos)
+extend-ignore = E203, W503
+
+# 3. Ignorar el entorno virtual (como hicimos antes)
+exclude = venv

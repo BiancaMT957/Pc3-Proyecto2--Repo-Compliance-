@@ -7,7 +7,10 @@ from typing import Dict, Iterable, List
 
 # Helpers
 def _read_text(p: Path) -> str:
-    return p.read_text(encoding="utf-8", errors="ignore") if p.exists() else ""
+    # Dividido en un if/else normal para legibilidad y longitud
+    if not p.exists():
+        return ""
+    return p.read_text(encoding="utf-8", errors="ignore")
 
 
 def _exists_insensitive(root: Path, names: Iterable[str]) -> Path | None:
@@ -19,8 +22,12 @@ def _exists_insensitive(root: Path, names: Iterable[str]) -> Path | None:
     return None
 
 
+# Definición de función dividida en múltiples líneas
 def _rule_result(
-    rule: str, status: str, severity: str, details: Dict | str | None = None
+    rule: str,
+    status: str,
+    severity: str,
+    details: Dict | str | None = None,
 ) -> Dict:
     # status: "PASS" | "FAIL"
     # severity: "LOW" | "MEDIUM" | "HIGH"
@@ -30,7 +37,8 @@ def _rule_result(
     return payload
 
 
-# 1) .env debe estar en .gitignore (FAIL+HIGH si falta)
+# 1) .env debe estar en .gitignore
+#    (FAIL+HIGH si falta)
 def check_env_in_gitignore(repo: Path) -> Dict:
     """Verifica que '.env' aparezca en el .gitignore."""
     gi = repo / ".gitignore"
@@ -44,7 +52,11 @@ def check_env_in_gitignore(repo: Path) -> Dict:
             "ENV_IN_GITIGNORE",
             "FAIL",
             "HIGH",
-            {"path": str(gi), "reason": "Falta la entrada .env en .gitignore"},
+            # Diccionario dividido en múltiples líneas
+            {
+                "path": str(gi),
+                "reason": "Falta la entrada .env en .gitignore",
+            },
         )
     return _rule_result("ENV_IN_GITIGNORE", "PASS", "LOW", {"path": str(gi)})
 
@@ -66,17 +78,25 @@ def check_license_file(repo: Path) -> Dict:
             "LICENSE_FILE",
             "FAIL",
             "MEDIUM",
-            {"path": str(candidate), "reason": "Archivo LICENSE vacío"},
+            # Diccionario dividido en múltiples líneas
+            {
+                "path": str(candidate),
+                "reason": "Archivo LICENSE vacío",
+            },
         )
     return _rule_result("LICENSE_FILE", "PASS", "LOW", {"path": str(candidate)})
 
 
-# 3) Makefile con targets obligatorios (lint, test, coverage). Devolver faltantes
+# 3) Makefile con targets obligatorios (lint, test, coverage).
+#    Devolver faltantes
 REQUIRED_MAKE_TARGETS = ("lint", "test", "coverage")
 
 
 def check_makefile_targets(repo: Path) -> Dict:
-    """Valida Makefile y presencia de targets requeridos; lista los faltantes en details."""
+    """
+    Valida Makefile y presencia de targets requeridos;
+    lista los faltantes en details.
+    """
     mk = _exists_insensitive(repo, ["Makefile"])
     if not mk:
         return _rule_result(
@@ -90,7 +110,9 @@ def check_makefile_targets(repo: Path) -> Dict:
     missing: List[str] = []
     for t in REQUIRED_MAKE_TARGETS:
         # busca 'target:' al inicio de línea (permitiendo espacios previos)
-        if not re.search(rf"(?m)^\s*{re.escape(t)}\s*:", content):
+        # Expresión regular guardada en variable para acortar línea
+        pattern = rf"(?m)^\s*{re.escape(t)}\s*:"
+        if not re.search(pattern, content):
             missing.append(t)
 
     if missing:
@@ -107,14 +129,17 @@ def check_makefile_targets(repo: Path) -> Dict:
     return _rule_result("MAKEFILE_TARGETS", "PASS", "LOW", {"path": str(mk)})
 
 
-# 4) Config vía variables de entorno / NO credenciales en archivos
+# 4) Config vía variables de entorno /
+#    NO credenciales en archivos
 # Reglas mínimas:
-#  - Si existe un archivo .env versionado => FAIL HIGH
-#  - Scan simple de secretos en archivos de config comunes (heurística mínima)
+#  - Si existe un archivo .env versionado => FAIL HIGH
+#  - Scan simple de secretos en archivos de config comunes (heurística mínima)
 
 SUSPECT_FILES = (".env", "settings.py", "config.py")
 SECRET_PATTERNS = (
-    r"(?i)AWS[_-]?SECRET[_-]?ACCESS[_-]?KEY\s*[:=]\s*['\"][A-Za-z0-9\/+=]{20,}['\"]?",
+    # String largo (regex) dividido en dos
+    r"(?i)AWS[_-]?SECRET[_-]?ACCESS[_-]?KEY\s*[:=]\s*['\"]"
+    r"[A-Za-z0-9\/+=]{20,}['\"]?",
     r"(?i)SECRET[_-]?KEY\s*[:=]\s*['\"].{12,}['\"]",
     r"(?i)API[_-]?KEY\s*[:=]\s*['\"][A-Za-z0-9\-_]{12,}['\"]",
     r"(?i)DB[_-]?PASSWORD\s*[:=]\s*['\"].+['\"]",
@@ -123,7 +148,10 @@ SECRET_PATTERNS = (
 
 
 def check_config_via_env(repo: Path) -> Dict:
-    """.env no debe versionarse; detectar credenciales en archivos de config comunes."""
+    """
+    .env no debe versionarse; detectar credenciales en
+    archivos de config comunes.
+    """
     # 4.a .env presente => FAIL HIGH
     if (repo / ".env").exists():
         return _rule_result(
@@ -132,12 +160,18 @@ def check_config_via_env(repo: Path) -> Dict:
             "HIGH",
             {
                 "path": str(repo / ".env"),
-                "reason": "Se detectó .env versionado en el repositorio",
+                # String dividido con paréntesis
+                "reason": ("Se detectó .env versionado en el repositorio"),
             },
         )
 
     # 4.b Heurística de secretos en archivos comunes
-    suspects: List[Path] = [p for name in SUSPECT_FILES if (p := repo / name).exists()]
+    # List comprehension "desenrollada" en un bucle for
+    suspects: List[Path] = []
+    for name in SUSPECT_FILES:
+        if (p := repo / name).exists():
+            suspects.append(p)
+
     leaks: Dict[str, List[str]] = {}
     for p in suspects:
         text = _read_text(p)
@@ -151,7 +185,7 @@ def check_config_via_env(repo: Path) -> Dict:
             "FAIL",
             "HIGH",
             {
-                "reason": "Posibles credenciales en archivos de configuración",
+                "reason": ("Posibles credenciales en archivos de configuración"),
                 "matches": leaks,
             },
         )
@@ -159,10 +193,15 @@ def check_config_via_env(repo: Path) -> Dict:
     # OK (ideal si existe .env.example documentando variables)
     ok_detail = {}
     if (repo / ".env.example").exists():
+        # String dividido con paréntesis
         ok_detail["hint"] = ".env.example presente (documenta variables sin valores)"
 
+    # Llamada a función dividida en múltiples líneas
     return _rule_result(
-        "CONFIG_VIA_ENV", "PASS", "LOW" if ok_detail else "MEDIUM", ok_detail or None
+        "CONFIG_VIA_ENV",
+        "PASS",
+        "LOW" if ok_detail else "MEDIUM",
+        ok_detail or None,
     )
 
 
@@ -181,12 +220,14 @@ def run_audit(repo: Path) -> Dict:
         try:
             findings.append(rule(repo))
         except Exception as exc:  # protección de motor
+            # Razón guardada en variable para acortar línea
+            detail = {"reason": f"{type(exc).__name__}: {exc}"}
             findings.append(
                 _rule_result(
                     rule.__name__,
                     "FAIL",
                     "HIGH",
-                    {"reason": f"{type(exc).__name__}: {exc}"},
+                    detail,
                 )
             )
 
