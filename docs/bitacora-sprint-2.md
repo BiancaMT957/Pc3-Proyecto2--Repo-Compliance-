@@ -331,3 +331,37 @@ cat out/report.json
 cat out/report.md
 cat out/blocked_time.json
 ```
+
+#### Metodo `_update_blocked_time()`:
+El metodo nos genera un archivo `blocked_time.json` que registra cuando un proyecto **entra** y cuando **sale** de un estado critico. 
+
+Definimos como estado critico a cualquier fallo de severidad HIGH hallado por el auditor (al menos uno).
+
+**Ejemplo**
+
+Cuando el auditor detecta un HIGH por primera vez:
+- `started_at`: fecha/hora exacta en que se detecto el problema y marca inicio del bloqueo.
+- `ended_at`: null, indica que el problema no ha sido solucionado.
+```json
+{
+  "blocked": true,
+  "started_at": "2025-11-13T10:00:00Z",
+  "ended_at": null
+}
+```
+Cuando corregimos el error y se vuelve a ejecutar el auditor, pasa lo siguiente:
+- `started_at`: se mantiene igual, representa el registro del error.
+- `ended_at`: se establece con la fecha y hora actual, cuando el HIGH fue resuelto.
+
+```json
+{
+  "blocked": false,
+  "started_at": "2025-11-13T10:00:00Z",
+  "ended_at": "2025-11-13T10:05:12Z"
+}
+```
+**Importancia:**
+- Mide el tiempo en estado crítico
+- Calcula métricas DevOps reales
+- Alimentar dashboards o PR comments
+- Documentar fallas y tiempo de recuperación
