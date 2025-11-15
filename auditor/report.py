@@ -7,24 +7,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from auditor.core import run_audit
+from auditor.core import count_by_severity, run_audit
+from auditor.metrics import (
+    compute_compliance_percent,
+    compute_trend,
+    export_metrics_json,
+)
 
 Finding = Dict
-
-
-def _count_by_severity(findings: List[Finding]) -> Dict[str, int]:
-    counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
-    for f in findings:
-        sev = f.get("severity")
-        if sev in counts:
-            counts[sev] += 1
-    return counts
 
 
 def write_json(findings: List[Finding], out_json: Path) -> Path:
     out_json.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "summary": {**_count_by_severity(findings), "total": len(findings)},
+        "summary": {**count_by_severity(findings), "total": len(findings)},
         "findings": findings,
     }
     out_json.write_text(
@@ -35,7 +31,7 @@ def write_json(findings: List[Finding], out_json: Path) -> Path:
 
 def write_markdown(findings: List[Finding], out_md: Path) -> Path:
     out_md.parent.mkdir(parents=True, exist_ok=True)
-    counts = _count_by_severity(findings)
+    counts = count_by_severity(findings)
     lines = []
     lines += [
         "# Repo-Compliance Report",
@@ -139,6 +135,28 @@ def main(argv: Optional[List[str]] = None) -> int:
         write_json(findings, Path(args.json))
     if not args.no_md:
         write_markdown(findings, Path(args.md))
+
+    # Integracion de metricas
+    severity_counts = count_by_severity(findings)
+
+    prev_metrics_path = Path("evidence/sprint-3/metrics.json")
+    if prev_metrics_path.exists():
+        prev_raw = json.loads(prev_metrics_path.read_text(encoding="utf-8"))
+        prev_counts = prev_raw.get(
+            "severity_counts", {"HIGH": 0, "MEDIUM": 0, "LOW": 0, "total": 0}
+        )
+    else:
+        prev_counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0, "total": 0}
+
+    compliance = compute_compliance_percent(severity_counts)
+    trend = compute_trend(prev_counts, severity_counts)
+
+    metrics_payload = {
+        "severity_counts": severity_counts,
+        "compliance_percent": compliance,
+        "trend": trend,
+    }
+    export_metrics_json(metrics_payload, Path("evidence/sprint-3/metrics.json"))
 
     # Actualiza/simula ventana de tiempo bloqueado
     _update_blocked_time(findings, Path(args.blocked_time))

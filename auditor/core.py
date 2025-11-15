@@ -247,3 +247,15 @@ def run_audit(repo: Path) -> Dict:
         },
         "findings": findings,
     }
+
+    # Para contar los fallos por seguridad
+
+
+def count_by_severity(findings):
+    counts = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
+    for f in findings:
+        sev = f.get("severity")
+        if sev in counts:
+            counts[sev] += 1
+    counts["total"] = sum(counts.values())
+    return counts
